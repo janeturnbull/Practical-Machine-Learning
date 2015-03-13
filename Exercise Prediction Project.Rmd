@@ -1,0 +1,82 @@
+---
+title: "Practical Machine Learning Project"
+output: html_document
+---
+##Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively.   In this project, the goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.  They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.   The goal of this project is to predict the manner in which they did the exercise. 
+
+##Read in Data and Perform EDA
+
+All packages needed to perform the analysis were loaded and then the datasets of interest were read in.   Missing value treatment was performed.
+
+```{r}
+library(caret)
+library(randomForest)
+
+train = read.csv("C:/Users/jane.s.turnbull/Documents/R/Practical Machine Learning/pml-training.csv",na.strings=c("NA","#DIV/0!", ""))
+test = read.csv("C:/Users/jane.s.turnbull/Documents/R/Practical Machine Learning/pml-testing.csv",na.strings=c("NA","#DIV/0!", ""))
+```
+
+A quick check of the dependent variable using the summary function is run.   The first 7 variables of the training data set were eliminated as they did not appear to be necessary to any type of prediction.   A seed was set to ensure reproducibility of results.
+
+```{r}
+summary(train$classe)
+train <- subset(train, select=-c(1:7))
+set.seed(573287)
+```
+The Train data set was randomly split into two datasets, Training and Validation. The Training data set contains 60% of the observations and the Validation data set contains 40% of the observations.   The dependent variable Classe was then plotted to see its distribuion on the Training data set.
+
+```{r}
+intrain <- createDataPartition(train$classe, p = 0.6, list = FALSE)
+Training <- train[intrain, ]
+Validation <- train[-intrain, ]
+
+plot(Training$classe,col="green",main="Frequency Plot of Training Data",xlab="Classe Levels",
+     ylab="Number of Cases")
+```
+
+It was noticed that many of the variables on the Training data set had many missing values.   To reduce the number of variables being introduced into the analysis, it was decided to eliminate variables that were missing 95% of the time or more.
+
+```{r}
+missing_value<-0.95*dim(Training)
+keep_cols <- !apply(Training, 2, function(y) sum(is.na(y)) > missing_value || sum(y=="") > missing_value)
+Training <- Training[, keep_cols]
+```
+##Predictive Modeling
+
+Since the dependent variable is categorical, several techniques were chosen to determine which predicted Classe the best, random forests, gradiant boosted regression, and linear discriminant analysis.
+
+##Random Forest Results
+
+The random forest technique was applied to the Training data set and prediction results were generated for the Validation data sets.   The accuracy of the prediction on the Validation data set was 0.9951568, and then the algorithm was run on the test sample of 20 observations.   The results are shown below.
+```{r}
+model_tree <- randomForest(classe~., data=Training, importance=TRUE)
+model_tree
+pred_tree = predict(model_tree, Validation)
+tree_accuracy = sum(pred_tree == Validation$classe) / length(pred_tree)
+tree_accuracy
+pred_tree_test = predict(model_tree, test)
+pred_tree_test
+```
+##Gradiant Boosting Results
+
+The gradiant boosting technique was applied to the Training data set and prediction results were generated for the Validation data sets.   The accuracy of the prediction on the Validation data set was 0.9608718, and then the algorithm was run on the test sample of 20 observations.   The results are shown below.   This method did not perform as well as random forest.   (The details of the model build are not shown here because the output was too long.)
+
+##Linear Discriminant Analysis Results
+
+The linear discriminant analysis technique was applied to the Training data set and prediction results were generated for the Validation data sets.   The accuracy of the prediction on the Validation data set was 0.708259, and then the algorithm was run on the test sample of 20 observations.   The results are shown below.   This method did not perform as well as random forest.
+
+```{r}
+model_lda <-train(classe ~ ., method = 'lda', data = Training) 
+model_lda
+pred_lda = predict(model_lda, Validation)
+lda_accuracy = sum(pred_lda == Validation$classe) / length(pred_lda)
+lda_accuracy
+pred_lda_test = predict(model_lda, test)
+pred_lda_test
+```
+
+##Conclusions
+
+The random forest methodology generated the most accurate results of the 3 methods on the Validation data set.   Additionally, when the predicted results on the test data set were submitted, all predictions were determined to be correct.
